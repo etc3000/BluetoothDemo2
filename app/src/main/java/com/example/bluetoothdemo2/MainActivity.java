@@ -99,6 +99,7 @@ public class MainActivity extends AppCompatActivity {
                 }
                 assert device != null;
                 showToast("Found device: " + device.getName() + " - " + device.getAddress());
+                // TODO: Handle the discovered device (e.g., store in a list, update UI)
             }
         }
     };

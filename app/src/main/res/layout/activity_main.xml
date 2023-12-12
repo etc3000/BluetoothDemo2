@@ -30,4 +30,16 @@
         android:layout_below="@id/connect_button"
         android:layout_centerHorizontal="true"
         android:layout_marginTop="20dp"/>
+    <TextView
+        android:id="@+id/tv2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="When run, this app should scan for Bluetooth devices and connect to them.
+We can then perform read/write operations"
+        android:background="@color/design_default_color_primary"
+        android:textColor="@color/white"
+        android:layout_below="@id/tv1"
+        android:layout_centerHorizontal="true"
+        android:textAlignment="center"
+        android:layout_marginTop="200dp"/>
 </RelativeLayout>
