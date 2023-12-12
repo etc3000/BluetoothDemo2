@@ -6,7 +6,6 @@ import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
 import android.content.pm.PackageManager;
-import android.os.Build;
 import android.util.Log;
 
 import androidx.core.app.ActivityCompat;
@@ -38,12 +37,11 @@ public class Connectivity {
     }
 
     private class AcceptThread extends Thread {
-        private final BluetoothAdapter bluetoothAdapter;
         private BluetoothServerSocket mmServerSocket;
 
         public AcceptThread() {
             BluetoothServerSocket tmp = null;
-            bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+            BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
             try {
                 if (hasBluetoothPermission()) {
@@ -71,7 +69,6 @@ public class Connectivity {
             }
 
             if (socket != null) {
-                // Handle the connected socket in the AcceptThread
                 handleConnectedSocket(socket);
                 try {
                     mmServerSocket.close();
@@ -82,7 +79,6 @@ public class Connectivity {
         }
 
         private void handleConnectedSocket(BluetoothSocket socket) {
-            // Implement your logic to handle the connected socket
             ConnectedThread connectedThread = new ConnectedThread(socket);
             connectedThread.start();
         }
@@ -96,15 +92,12 @@ public class Connectivity {
         }
     }
 
-
     private class ConnectThread extends Thread {
-        private BluetoothSocket mmSocket;
-        private final BluetoothDevice mmDevice;
+        private  BluetoothSocket mmSocket;
         private final BluetoothAdapter bluetoothAdapter;
 
         public ConnectThread(BluetoothDevice device) {
             BluetoothSocket tmp = null;
-            mmDevice = device;
             bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
             try {
@@ -123,7 +116,6 @@ public class Connectivity {
         }
 
         public void run() {
-            // Cancel discovery because it otherwise slows down the connection.
             if (ActivityCompat.checkSelfPermission(context, android.Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
                 return;
             }
@@ -144,7 +136,6 @@ public class Connectivity {
         }
 
         private void manageMyConnectedSocket(BluetoothSocket socket) {
-            // Implement your logic to handle the connected socket
             ConnectedThread connectedThread = new ConnectedThread(socket);
             connectedThread.start();
         }
@@ -186,17 +177,12 @@ public class Connectivity {
         }
 
         public void run() {
-            // Code for reading from the InputStream
             byte[] buffer = new byte[1024];
             int bytes;
 
             try {
-                // Keep listening to the InputStream until an exception occurs
                 while (true) {
                     bytes = mmInputStream.read(buffer);
-
-                    // Process the received data (e.g., update UI, trigger events)
-                    // Here, you might want to handle the 'buffer' array containing received bytes
                     Log.d(TAG, "Received data: " + new String(buffer, 0, bytes));
                 }
             } catch (IOException e) {
@@ -206,7 +192,6 @@ public class Connectivity {
 
         public void write(byte[] bytes) {
             try {
-                // Write to the OutputStream
                 mmOutputStream.write(bytes);
             } catch (IOException e) {
                 Log.e(TAG, "Error occurred when writing to OutputStream", e);
@@ -215,7 +200,6 @@ public class Connectivity {
 
         public void cancel() {
             try {
-                // Close the BluetoothSocket and associated streams
                 mmSocket.close();
                 mmInputStream.close();
                 mmOutputStream.close();
