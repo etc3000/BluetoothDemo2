@@ -2,109 +2,128 @@ package com.example.bluetoothdemo2;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
-import android.content.Intent;
+import android.bluetooth.BluetoothSocket;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.Looper;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
+import java.io.IOException;
+import java.util.Set;
+import java.util.UUID;
+
 public class MainActivity extends AppCompatActivity {
-    private static final int REQUEST_ENABLE_BT = 1;
+    private static final String TAG = "MainActivity";
+
+    private static final UUID MY_UUID =  UUID.randomUUID();
     private BluetoothAdapter bluetoothAdapter;
+    private BluetoothSocket bluetoothSocket;
     private Connectivity connectivity;
-    private TextView readTextView;
+
+    // UI components
+    private TextView receivedDataText;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Bluetooth setup
+        // Initialize Bluetooth
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         if (bluetoothAdapter == null) {
-            showToast("Device does not support Bluetooth");
+            Log.e(TAG, "Device does not support Bluetooth");
             finish();
-            return;
         }
+        receivedDataText = findViewById(R.id.received_data_text);
+        Button connectButton = findViewById(R.id.connect_button);
+        connectButton.setOnClickListener(view -> {
+            BluetoothDevice discoveredDevice = getDiscoveredDevice();
+            if (discoveredDevice != null) {
+                connectToDevice(discoveredDevice);
+            } else {
+                Log.e(TAG, "No discovered device available");
+            }
+        });
 
-        if (!bluetoothAdapter.isEnabled()) {
+        Button writeButton = findViewById(R.id.write_button);
+        writeButton.setOnClickListener(view -> {
+            if (connectivity != null) {
+                // Hardcoded string to be sent over Bluetooth
+                String message = "The other device says hello!";
+                byte[] bytes = message.getBytes();
+                connectivity.write(bytes);
+            } else {
+                Log.e(TAG, "Connectivity is not initialized");
+            }
+        });
+
+        Button cancelButton = findViewById(R.id.cancel_button);
+        cancelButton.setOnClickListener(view -> cancelConnection());
+    }
+
+    private BluetoothDevice getDiscoveredDevice() {
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+            return null;
+        }
+        Set<BluetoothDevice> pairedDevices = bluetoothAdapter.getBondedDevices();
+        if (!pairedDevices.isEmpty()) {
+            for (BluetoothDevice device : pairedDevices) {
+                return device;
+            }
+        }
+        return null;
+    }
+
+    private void connectToDevice(BluetoothDevice device) {
+        cancelConnection();
+
+        try {
             if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-                // TODO: Consider calling
-                //    ActivityCompat#requestPermissions
-                // here to request the missing permissions, and then overriding
-                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-                //                                          int[] grantResults)
-                // to handle the case where the user grants the permission. See the documentation
-                // for ActivityCompat#requestPermissions for more details.
                 return;
             }
-            startActivityForResult(new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE), REQUEST_ENABLE_BT);
+            bluetoothSocket = device.createRfcommSocketToServiceRecord(MY_UUID);
+            bluetoothSocket.connect();
+
+            Handler handler = new Handler(message -> {
+                switch (message.what) {
+                    case Connectivity.MESSAGE_READ:
+                        byte[] readBuf = (byte[]) message.obj;
+                        String receivedData = new String(readBuf, 0, message.arg1);
+                        receivedDataText.setText(receivedData);
+                        break;
+
+                    case Connectivity.MESSAGE_CONNECTION_CANCELED:
+                        receivedDataText.setText("Connection canceled");
+                        break;
+                }
+                return true;
+            });
+
+            connectivity = new Connectivity(bluetoothSocket, handler);
+            Thread connectivityThread = new Thread((Runnable) connectivity);
+            connectivityThread.start();
+        } catch (IOException e) {
+            Log.e(TAG, "Error connecting to Bluetooth device", e);
         }
-
-        // UI setup
-        readTextView = findViewById(R.id.received_data_text);
-
-        // Handler for updating UI from background threads
-        Handler mainHandler = new Handler(Looper.getMainLooper());
-
-        // Connectivity setup
-        connectivity = new Connectivity(this, mainHandler);
-
-        // Discover Devices Button
-        Button discoverButton = findViewById(R.id.discover_button);
-        discoverButton.setOnClickListener(v -> discoverDevices());
-
-        // Connect Button
-        Button connectButton = findViewById(R.id.connect_button);
-        connectButton.setOnClickListener(v -> connectToSelectedDevice());
-
-        // Cancel Button
-        Button cancelButton = findViewById(R.id.cancel_button);
-        cancelButton.setOnClickListener(v -> cancelBluetoothOperation());
-
-        // Write Button
-        Button writeButton = findViewById(R.id.write_button);
-        writeButton.setOnClickListener(v -> writeDataToConnectedDevice());
     }
 
-    private void showToast(String message) {
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
-    }
-
-    private void discoverDevices() {
-        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.BLUETOOTH_CONNECT) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            return;
+    private void cancelConnection() {
+        if (connectivity != null) {
+            connectivity.cancel();
+            connectivity = null;
         }
-        if (bluetoothAdapter.isDiscovering()) {
-            bluetoothAdapter.cancelDiscovery();
+        if (bluetoothSocket != null) {
+            try {
+                bluetoothSocket.close();
+            } catch (IOException e) {
+                Log.e(TAG, "Error closing Bluetooth socket", e);
+            }
+            bluetoothSocket = null;
         }
-        showToast("Discovering devices...");
-        // Implement Bluetooth device discovery logic
-    }
-
-    private void connectToSelectedDevice() {
-        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.BLUETOOTH_CONNECT) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            return;
-        }
-        showToast("Connecting to the selected device...");
-        // Implement Bluetooth device connection logic
-    }
-
-    private void cancelBluetoothOperation() {
-        showToast("Bluetooth operation canceled");
-        // Implement Bluetooth operation cancellation logic
-    }
-
-    private void writeDataToConnectedDevice() {
-        // Example: Write a hardcoded string to the connected device
-        String message = "The other device says hello!";
-        byte[] data = message.getBytes();
-        connectivity.writeData(data);
     }
 }
