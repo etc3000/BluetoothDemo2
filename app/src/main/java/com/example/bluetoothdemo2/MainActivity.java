@@ -17,6 +17,7 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -42,7 +43,6 @@ public class MainActivity extends AppCompatActivity {
     private ListView deviceListView;
     private ArrayList<BluetoothDevice> discoveredDevices;
     private ArrayAdapter<BluetoothDevice> deviceAdapter;
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -97,6 +97,11 @@ public class MainActivity extends AppCompatActivity {
         cancelButton.setOnClickListener(view -> cancelConnection());
     }
 
+    private void showToast(String message) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+        Log.d(TAG, message);
+    }
+
     private void discoverDevices() {
         // Check if Bluetooth is enabled
         if (!bluetoothAdapter.isEnabled()) {
@@ -115,16 +120,16 @@ public class MainActivity extends AppCompatActivity {
 
         // Start discovery
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
             return;
         }
-        bluetoothAdapter.startDiscovery();
+        if (!bluetoothAdapter.isDiscovering()) {
+            boolean startedDiscovery = bluetoothAdapter.startDiscovery();
+            if (startedDiscovery) {
+                showToast("Discovery started");
+            } else {
+                showToast("Failed to start discovery");
+            }
+        }
     }
 
     // BroadcastReceiver for handling device discovery
@@ -186,6 +191,7 @@ public class MainActivity extends AppCompatActivity {
             connectivityThread.start();
         } catch (IOException e) {
             Log.e(TAG, "Error connecting to Bluetooth device", e);
+            showToast("Error connecting to Bluetooth Device");
         }
     }
     // Button / Method to cancelConnection
