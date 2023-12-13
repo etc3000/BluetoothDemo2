@@ -1,27 +1,35 @@
 package com.example.bluetoothdemo2;
 
 //Importing the packages we need
+
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.ListView;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Set;
 import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
 
-    private static final UUID MY_UUID =  UUID.randomUUID();
+    private static final UUID MY_UUID = UUID.randomUUID();
     //Using a random UUID for Bluetooth communication (standard practice)
     private BluetoothAdapter bluetoothAdapter;
     private BluetoothSocket bluetoothSocket;
@@ -29,6 +37,12 @@ public class MainActivity extends AppCompatActivity {
 
     // UI components
     private TextView receivedDataText;
+
+    private TextView tv1;
+    private ListView deviceListView;
+    private ArrayList<BluetoothDevice> discoveredDevices;
+    private ArrayAdapter<BluetoothDevice> deviceAdapter;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,6 +55,18 @@ public class MainActivity extends AppCompatActivity {
             Log.e(TAG, "Device does not support Bluetooth");
             finish();
         }
+        // UI components
+        tv1 = findViewById(R.id.tv1);
+        deviceListView = findViewById(R.id.device_list_view);
+
+        // Initialize discovered devices list and adapter
+        discoveredDevices = new ArrayList<>();
+        deviceAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, discoveredDevices);
+        deviceListView.setAdapter(deviceAdapter);
+
+        // Discover Devices Button
+        Button discoverButton = findViewById(R.id.discover_button);
+        discoverButton.setOnClickListener(view -> discoverDevices());
 
         // Reference UI components
         receivedDataText = findViewById(R.id.received_data_text);
@@ -70,6 +96,52 @@ public class MainActivity extends AppCompatActivity {
         Button cancelButton = findViewById(R.id.cancel_button);
         cancelButton.setOnClickListener(view -> cancelConnection());
     }
+
+    private void discoverDevices() {
+        // Check if Bluetooth is enabled
+        if (!bluetoothAdapter.isEnabled()) {
+            // Request user to enable Bluetooth
+            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            startActivityForResult(enableBtIntent, 1);
+        }
+
+        // Clear existing devices in the list
+        discoveredDevices.clear();
+        deviceAdapter.notifyDataSetChanged();
+
+        // Register for discovery events
+        IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
+        registerReceiver(discoveryReceiver, filter);
+
+        // Start discovery
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
+        }
+        bluetoothAdapter.startDiscovery();
+    }
+
+    // BroadcastReceiver for handling device discovery
+    private final BroadcastReceiver discoveryReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (BluetoothDevice.ACTION_FOUND.equals(action)) {
+                // A Bluetooth device was found
+                BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                if (device != null) {
+                    discoveredDevices.add(device);
+                    deviceAdapter.notifyDataSetChanged();
+                }
+            }
+        }
+    };
     //Method for discovering paired Bluetooth devices
     private BluetoothDevice getDiscoveredDevice() {
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
@@ -130,5 +202,11 @@ public class MainActivity extends AppCompatActivity {
             }
             bluetoothSocket = null;
         }
+    }
+    // Unregister the receiver when the activity is destroyed
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        unregisterReceiver(discoveryReceiver);
     }
 }
