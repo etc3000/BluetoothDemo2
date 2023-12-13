@@ -1,13 +1,16 @@
 package com.example.bluetoothdemo2;
 
+import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
 import android.content.pm.PackageManager;
-import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
+import android.widget.Toast;
 
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -20,25 +23,42 @@ import java.util.UUID;
 public class Connectivity {
     private static final String TAG = "Connectivity";
     private static final String NAME = "YourBluetoothAppName";
-    private static final UUID MY_UUID = UUID.randomUUID(); // Replace with your generated UUID
+    private static final UUID MY_UUID = UUID.fromString("your-uuid-string"); // Replace with your generated UUID
     private BluetoothServerSocket mmServerSocket;
     private final Context context;
+    private final Handler mainHandler;
+    private ConnectedThread connectedThread;
 
-    public Connectivity(Context context) {
+    public Connectivity(Context context, Handler mainHandler) {
         this.context = context;
+        this.mainHandler = mainHandler;
     }
 
     public void startServer() {
+        if (hasBluetoothPermission()) {
+            showToast("Bluetooth permissions not granted");
+            return;
+        }
         AcceptThread acceptThread = new AcceptThread();
         acceptThread.start();
     }
 
     public void startClient(BluetoothDevice device) {
+        if (hasBluetoothPermission()) {
+            showToast("Bluetooth permissions not granted");
+            return;
+        }
         ConnectThread connectThread = new ConnectThread(device);
         connectThread.start();
     }
 
-    // ... existing code
+    public void writeData(byte[] data) {
+        if (connectedThread != null) {
+            connectedThread.write(data);
+        } else {
+            showToast("Not connected to any device");
+        }
+    }
 
     private class AcceptThread extends Thread {
         private final BluetoothAdapter bluetoothAdapter;
@@ -46,17 +66,19 @@ public class Connectivity {
         public AcceptThread() {
             BluetoothServerSocket tmp = null;
             bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-
+            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
+                // TODO: Consider calling
+                //    ActivityCompat#requestPermissions
+                // here to request the missing permissions, and then overriding
+                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                //                                          int[] grantResults)
+                // to handle the case where the user grants the permission. See the documentation
+                // for ActivityCompat#requestPermissions for more details.
+                return;
+            }
             try {
-                if (hasBluetoothPermission()) {
-                    // TODO: Handle Bluetooth permission request
-                    return;
-                }
-
-                if (ActivityCompat.checkSelfPermission(context, android.Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-                    return;
-                }
                 tmp = bluetoothAdapter.listenUsingRfcommWithServiceRecord(NAME, MY_UUID);
+
             } catch (IOException e) {
                 Log.e(TAG, "Socket's listen() method failed", e);
             }
@@ -65,42 +87,33 @@ public class Connectivity {
 
         public void run() {
             BluetoothSocket socket;
-            while (true) {
-                try {
-                    socket = mmServerSocket.accept();
-                } catch (IOException e) {
-                    Log.e(TAG, "Socket's accept() method failed", e);
-                    break;
-                }
+            try {
+                socket = mmServerSocket.accept();
+            } catch (IOException e) {
+                Log.e(TAG, "Socket's accept() method failed", e);
+                return;
+            }
 
-                if (socket != null) {
-                    // Handle the connected socket in the AcceptThread
-                    handleConnectedSocket(socket);
-                    try {
-                        mmServerSocket.close();
-                    } catch (IOException e) {
-                        Log.e(TAG, "Error closing server socket", e);
-                    }
-                    break;
+            if (socket != null) {
+                handleConnectedSocket(socket);
+                try {
+                    mmServerSocket.close();
+                } catch (IOException e) {
+                    Log.e(TAG, "Error closing server socket", e);
                 }
             }
         }
 
         private void handleConnectedSocket(BluetoothSocket socket) {
-            // Implement your logic to handle the connected socket
-            ConnectedThread connectedThread = new ConnectedThread(socket);
+            connectedThread = new ConnectedThread(socket);
             connectedThread.start();
         }
 
-        public void cancel() {
-            try {
-                mmServerSocket.close();
-            } catch (IOException e) {
-                Log.e(TAG, "Could not close the connect socket", e);
-            }
+        private void showToast(String message) {
+            mainHandler.post(() ->
+                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show());
         }
     }
-
 
     private class ConnectThread extends Thread {
         private BluetoothSocket mmSocket = null;
@@ -108,16 +121,14 @@ public class Connectivity {
         private final BluetoothAdapter bluetoothAdapter;
 
         public ConnectThread(BluetoothDevice device) {
+
             BluetoothSocket tmp = null;
             mmDevice = device;
             bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
             try {
-                if (hasBluetoothPermission()) {
-                    // TODO: Handle Bluetooth permission request
-                    return;
-                }
-                if (ActivityCompat.checkSelfPermission(context, android.Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
+                    // TODO: Consider calling
                     //    ActivityCompat#requestPermissions
                     // here to request the missing permissions, and then overriding
                     //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
@@ -134,8 +145,8 @@ public class Connectivity {
         }
 
         public void run() {
-            // Cancel discovery because it otherwise slows down the connection.
-            if (ActivityCompat.checkSelfPermission(context, android.Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
+                // TODO: Consider calling
                 //    ActivityCompat#requestPermissions
                 // here to request the missing permissions, and then overriding
                 //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
@@ -144,7 +155,9 @@ public class Connectivity {
                 // for ActivityCompat#requestPermissions for more details.
                 return;
             }
-            bluetoothAdapter.cancelDiscovery();
+            if (bluetoothAdapter.isDiscovering()) {
+                bluetoothAdapter.cancelDiscovery();
+            }
 
             try {
                 mmSocket.connect();
@@ -157,27 +170,18 @@ public class Connectivity {
                 return;
             }
 
-            manageMyConnectedSocket(mmSocket);
+            handleConnectedSocket(mmSocket);
         }
 
-        private void manageMyConnectedSocket(BluetoothSocket socket) {
-            // Implement your logic to handle the connected socket
-            ConnectedThread connectedThread = new ConnectedThread(socket);
+        private void handleConnectedSocket(BluetoothSocket socket) {
+            connectedThread = new ConnectedThread(socket);
             connectedThread.start();
         }
 
-        public void cancel() {
-            try {
-                mmSocket.close();
-            } catch (IOException e) {
-                Log.e(TAG, "Could not close the client socket", e);
-            }
+        private void showToast(String message) {
+            mainHandler.post(() ->
+                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show());
         }
-    }
-
-    private boolean hasBluetoothPermission() {
-        return ContextCompat.checkSelfPermission(context, android.Manifest.permission.BLUETOOTH) != PackageManager.PERMISSION_GRANTED ||
-                ContextCompat.checkSelfPermission(context, android.Manifest.permission.BLUETOOTH_ADMIN) != PackageManager.PERMISSION_GRANTED;
     }
 
     public class ConnectedThread extends Thread {
@@ -203,27 +207,31 @@ public class Connectivity {
         }
 
         public void run() {
-            // Code for reading from the InputStream
             byte[] buffer = new byte[1024];
             int bytes;
 
             try {
-                // Keep listening to the InputStream until an exception occurs
                 while (true) {
                     bytes = mmInputStream.read(buffer);
+                    String receivedData = new String(buffer, 0, bytes);
+                    Log.d(TAG, "Received data: " + receivedData);
 
-                    // Process the received data (e.g., update UI, trigger events)
-                    // Here, you might want to handle the 'buffer' array containing received bytes
-                    Log.d(TAG, "Received data: " + new String(buffer, 0, bytes));
+                    mainHandler.post(() ->
+                            updateUIWithReceivedData(receivedData));
                 }
             } catch (IOException e) {
                 Log.e(TAG, "Error occurred when reading from InputStream", e);
             }
         }
 
+        private void updateUIWithReceivedData(String receivedData) {
+            // Implement UI update logic here
+            // For example, update a TextView
+            // received_data_text.setText(receivedData);
+        }
+
         public void write(byte[] bytes) {
             try {
-                // Write to the OutputStream
                 mmOutputStream.write(bytes);
             } catch (IOException e) {
                 Log.e(TAG, "Error occurred when writing to OutputStream", e);
@@ -232,7 +240,6 @@ public class Connectivity {
 
         public void cancel() {
             try {
-                // Close the BluetoothSocket and associated streams
                 mmSocket.close();
                 mmInputStream.close();
                 mmOutputStream.close();
@@ -240,5 +247,15 @@ public class Connectivity {
                 Log.e(TAG, "Error occurred when closing the ConnectedThread", e);
             }
         }
+    }
+
+    private void showToast(String message) {
+        mainHandler.post(() ->
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show());
+    }
+
+    private boolean hasBluetoothPermission() {
+        return ContextCompat.checkSelfPermission(context, android.Manifest.permission.BLUETOOTH) != android.content.pm.PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(context, android.Manifest.permission.BLUETOOTH_ADMIN) != android.content.pm.PackageManager.PERMISSION_GRANTED;
     }
 }
