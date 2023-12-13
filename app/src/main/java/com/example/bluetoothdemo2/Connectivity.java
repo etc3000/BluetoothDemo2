@@ -2,13 +2,15 @@ package com.example.bluetoothdemo2;
 
 import android.bluetooth.BluetoothSocket;
 import android.os.Handler;
-import android.os.Message;
 import android.util.Log;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
+//public Class Constructor, holds all of our inner classes
+// Inner classes are our run/read/write/cancel operations etc.
+// thread-safe by making each process run on its own thread.
 public class Connectivity {
     static final String TAG = "Connectivity";
     static final int MESSAGE_READ = 1;
@@ -36,6 +38,7 @@ public class Connectivity {
         mmOutputStream = tmpOut;
     }
 
+    //reading data from inputStream (hardcoded string sent from other device)
     public void run() {
         // Code for reading from the InputStream
         byte[] buffer = new byte[1024];

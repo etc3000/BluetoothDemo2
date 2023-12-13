@@ -1,5 +1,6 @@
 package com.example.bluetoothdemo2;
 
+//Importing the packages we need
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
@@ -21,6 +22,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
 
     private static final UUID MY_UUID =  UUID.randomUUID();
+    //Using a random UUID for Bluetooth communication (standard practice)
     private BluetoothAdapter bluetoothAdapter;
     private BluetoothSocket bluetoothSocket;
     private Connectivity connectivity;
@@ -39,6 +41,8 @@ public class MainActivity extends AppCompatActivity {
             Log.e(TAG, "Device does not support Bluetooth");
             finish();
         }
+
+        // Reference UI components
         receivedDataText = findViewById(R.id.received_data_text);
         Button connectButton = findViewById(R.id.connect_button);
         connectButton.setOnClickListener(view -> {
@@ -53,7 +57,8 @@ public class MainActivity extends AppCompatActivity {
         Button writeButton = findViewById(R.id.write_button);
         writeButton.setOnClickListener(view -> {
             if (connectivity != null) {
-                // Hardcoded string to be sent over Bluetooth
+                // This is a hardcoded string to be sent over Bluetooth
+                // via the write button (simple implementation)
                 String message = "The other device says hello!";
                 byte[] bytes = message.getBytes();
                 connectivity.write(bytes);
@@ -65,7 +70,7 @@ public class MainActivity extends AppCompatActivity {
         Button cancelButton = findViewById(R.id.cancel_button);
         cancelButton.setOnClickListener(view -> cancelConnection());
     }
-
+    //Method for discovering paired Bluetooth devices
     private BluetoothDevice getDiscoveredDevice() {
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
             return null;
@@ -78,7 +83,7 @@ public class MainActivity extends AppCompatActivity {
         }
         return null;
     }
-
+    //Method for connecting to another Bluetooth Device
     private void connectToDevice(BluetoothDevice device) {
         cancelConnection();
 
@@ -103,7 +108,7 @@ public class MainActivity extends AppCompatActivity {
                 }
                 return true;
             });
-
+            //initialize our Connectivity class, start threads for operations
             connectivity = new Connectivity(bluetoothSocket, handler);
             Thread connectivityThread = new Thread((Runnable) connectivity);
             connectivityThread.start();
@@ -111,7 +116,7 @@ public class MainActivity extends AppCompatActivity {
             Log.e(TAG, "Error connecting to Bluetooth device", e);
         }
     }
-
+    // Button / Method to cancelConnection
     private void cancelConnection() {
         if (connectivity != null) {
             connectivity.cancel();
