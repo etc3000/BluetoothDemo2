@@ -16,6 +16,7 @@ import android.os.Handler;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
@@ -41,7 +42,6 @@ public class MainActivity extends AppCompatActivity {
 
     // UI components
     private TextView receivedDataText;
-
     private TextView tv1;
     private ListView deviceListView;
     private ArrayList<BluetoothDevice> discoveredDevices;
@@ -68,6 +68,19 @@ public class MainActivity extends AppCompatActivity {
         deviceListView.setAdapter(deviceAdapter);
         deviceListView.setChoiceMode(ListView.CHOICE_MODE_SINGLE); // allows user to select a device
 
+        deviceListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, int position, long id) {
+                // Retrieve the selected device from the list
+                BluetoothDevice selectedDevice = discoveredDevices.get(position);
+                if (selectedDevice != null) {
+                    connectToDevice(selectedDevice);
+                } else {
+                    Log.e(TAG, "No device selected");
+                    showToast("No device selected");
+                }
+            }
+        });
         // Discover Devices Button
         Button discoverButton = findViewById(R.id.discover_button);
         discoverButton.setOnClickListener(new View.OnClickListener() {
@@ -118,6 +131,11 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+    private void requestBluetoothPermissions() {
+        ActivityCompat.requestPermissions(this,
+                new String[]{android.Manifest.permission.BLUETOOTH, android.Manifest.permission.ACCESS_FINE_LOCATION},
+                1);
+    }
 
     private void showToast(String message) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
@@ -136,9 +154,7 @@ public class MainActivity extends AppCompatActivity {
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.BLUETOOTH) != PackageManager.PERMISSION_GRANTED ||
                 ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             // If permissions are not granted, request them
-            ActivityCompat.requestPermissions(this,
-                    new String[]{android.Manifest.permission.BLUETOOTH, android.Manifest.permission.ACCESS_FINE_LOCATION},
-                    1);
+            requestBluetoothPermissions();
         } else {
             // Permissions are already granted, start discovery
             startDiscovery();
@@ -251,11 +267,16 @@ public class MainActivity extends AppCompatActivity {
             connectivity = new Connectivity(bluetoothSocket, handler);
             Thread connectivityThread = new Thread((Runnable) connectivity);
             connectivityThread.start();
+
+            // Add a log statement or Toast for successful connection
+            Log.d(TAG, "Connected to: " + device.getName());
+            showToast("Connected to: " + device.getName());
         } catch (IOException e) {
             Log.e(TAG, "Error connecting to Bluetooth device", e);
             showToast("Error connecting to Bluetooth Device");
         }
     }
+
 
     // Button / Method to cancelConnection
     private void cancelConnection() {
