@@ -1,6 +1,5 @@
 package com.example.bluetoothdemo2;
 
-import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
@@ -14,28 +13,26 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.provider.Settings;
 import android.util.Log;
-import android.view.View;
-import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Set;
 import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity {
-
     private static final String TAG = "MainActivity";
-    private static final UUID MY_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
-    private static final int REQUEST_ENABLE_BT = 1;
 
+    private static final UUID MY_UUID = UUID.randomUUID();
     private BluetoothAdapter bluetoothAdapter;
     private BluetoothSocket bluetoothSocket;
     private Connectivity connectivity;
@@ -45,20 +42,6 @@ public class MainActivity extends AppCompatActivity {
     private ListView deviceListView;
     private ArrayList<BluetoothDevice> discoveredDevices;
     private ArrayAdapter<BluetoothDevice> deviceAdapter;
-
-    private final BroadcastReceiver discoveryReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            String action = intent.getAction();
-            if (BluetoothDevice.ACTION_FOUND.equals(action)) {
-                BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-                if (device != null) {
-                    discoveredDevices.add(device);
-                    deviceAdapter.notifyDataSetChanged();
-                }
-            }
-        }
-    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -72,6 +55,13 @@ public class MainActivity extends AppCompatActivity {
             Log.e(TAG, "Device does not support Bluetooth");
             finish();
         }
+        if (!bluetoothAdapter.isEnabled()) {
+            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                return;
+            }
+            startActivityForResult(enableBtIntent, 1);
+        }
 
         tv1 = findViewById(R.id.tv1);
         deviceListView = findViewById(R.id.device_list_view);
@@ -83,16 +73,11 @@ public class MainActivity extends AppCompatActivity {
         deviceListView.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
 
         deviceListView.setOnItemClickListener((adapterView, view, position, id) -> {
+            // Retrieve the selected device from the list
             BluetoothDevice selectedDevice = discoveredDevices.get(position);
             if (selectedDevice != null) {
-                if (ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-                    // TODO: Consider calling
-                    //    ActivityCompat#requestPermissions
-                    // here to request the missing permissions, and then overriding
-                    //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-                    //                                          int[] grantResults)
-                    // to handle the case where the user grants the permission. See the documentation
-                    // for ActivityCompat#requestPermissions for more details.
+                if (ActivityCompat.checkSelfPermission(MainActivity.this, android.Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                    showToast("Connecting permission not granted");
                     return;
                 }
                 tv1.setText("Selected Device: " + selectedDevice.getName() + " (" + selectedDevice.getAddress() + ")");
@@ -139,16 +124,32 @@ public class MainActivity extends AppCompatActivity {
             startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
         }
 
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH) != PackageManager.PERMISSION_GRANTED ||
-                ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED ||
-                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.BLUETOOTH) != PackageManager.PERMISSION_GRANTED ||
+                ActivityCompat.checkSelfPermission(this, android.Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED ||
+                ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this,
                     new String[]{
-                            Manifest.permission.BLUETOOTH,
-                            Manifest.permission.BLUETOOTH_CONNECT,
-                            Manifest.permission.ACCESS_FINE_LOCATION
+                            android.Manifest.permission.BLUETOOTH,
+                            android.Manifest.permission.BLUETOOTH_CONNECT,
+                            android.Manifest.permission.ACCESS_FINE_LOCATION
                     },
                     1);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        switch (requestCode) {
+            case 1: {
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    showToast("Bluetooth permissions granted");
+                } else {
+                    showToast("Bluetooth permissions not granted");
+                }
+                break;
+            }
         }
     }
 
@@ -163,8 +164,8 @@ public class MainActivity extends AppCompatActivity {
             startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
         }
 
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH) != PackageManager.PERMISSION_GRANTED ||
-                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.BLUETOOTH) != PackageManager.PERMISSION_GRANTED ||
+                ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             requestBluetoothPermissions();
         } else {
             startDiscovery();
@@ -173,32 +174,25 @@ public class MainActivity extends AppCompatActivity {
 
     private void requestBluetoothPermissions() {
         ActivityCompat.requestPermissions(this,
-                new String[]{Manifest.permission.BLUETOOTH, Manifest.permission.ACCESS_FINE_LOCATION},
+                new String[]{android.Manifest.permission.BLUETOOTH, android.Manifest.permission.ACCESS_FINE_LOCATION},
                 1);
     }
 
     private void startDiscovery() {
-        // Check for Bluetooth permissions
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH) != PackageManager.PERMISSION_GRANTED ||
-                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED ||
-                ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
-            requestBluetoothPermissions();
-            return; // Return early if permissions are not granted
-        }
         discoveredDevices.clear();
         deviceAdapter.notifyDataSetChanged();
 
-        // Register the broadcast receiver for Bluetooth device discovery
         IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
         registerReceiver(discoveryReceiver, filter);
 
-        // Check if Bluetooth is enabled
         if (!bluetoothAdapter.isEnabled()) {
-            // If Bluetooth is not enabled, request the user to enable it
             Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
+            if (ActivityCompat.checkSelfPermission(MainActivity.this, android.Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                showToast("Connecting permission not granted");
+                return;
+            }
+            startActivityForResult(enableBtIntent, 1);
         } else {
-            // Bluetooth is enabled, cancel any ongoing discovery and start a new one
             if (bluetoothAdapter.isDiscovering()) {
                 bluetoothAdapter.cancelDiscovery();
             }
@@ -220,25 +214,44 @@ public class MainActivity extends AppCompatActivity {
         return null;
     }
 
+    private final BroadcastReceiver discoveryReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (BluetoothDevice.ACTION_FOUND.equals(action)) {
+                BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                if (device != null) {
+                    discoveredDevices.add(device);
+                    deviceAdapter.notifyDataSetChanged();
+                }
+            }
+        }
+    };
+
+    private BluetoothDevice getDiscoveredDevice() {
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+            showToast("Connecting permission not granted");
+            return null;
+        }
+        Set<BluetoothDevice> pairedDevices = bluetoothAdapter.getBondedDevices();
+        if (!pairedDevices.isEmpty()) {
+            for (BluetoothDevice device : pairedDevices) {
+                return device;
+            }
+        }
+        return null;
+    }
+
     private void connectToDevice(BluetoothDevice device) {
         cancelConnection();
 
         try {
-            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+            if (ActivityCompat.checkSelfPermission(MainActivity.this, android.Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
                 showToast("Bluetooth permission not granted");
                 return;
             }
 
-            Method method;
-            try {
-                method = device.getClass().getMethod("createRfcommSocket", int.class);
-                bluetoothSocket = (BluetoothSocket) method.invoke(device, 1);
-            } catch (Exception e) {
-                Log.e(TAG, "Error creating RFCOMM BluetoothSocket", e);
-                showToast("Error creating BluetoothSocket");
-                return;
-            }
-
+            bluetoothSocket = device.createRfcommSocketToServiceRecord(MY_UUID);
             bluetoothSocket.connect();
 
             Handler handler = new Handler(message -> {
