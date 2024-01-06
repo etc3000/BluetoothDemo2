@@ -8,8 +8,8 @@ android {
 
     defaultConfig {
         applicationId = "com.example.bluetoothdemo2"
-        minSdk = 31
-        targetSdk = 34
+        minSdk = 27
+        targetSdk = 33
         versionCode = 1
         versionName = "1.0"
 
