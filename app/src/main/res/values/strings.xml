@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">BluetoothDemo2</string>
+    <string name="selected_device">Selected Device: %1$s (%2$s)</string>
 </resources>
