@@ -38,24 +38,17 @@ public class Connectivity {
         mmOutputStream = tmpOut;
     }
 
-    //reading data from inputStream (hardcoded string sent from other device)
     public void run() {
-        // Code for reading from the InputStream
         byte[] buffer = new byte[1024];
         int bytes;
 
         try {
-            // Keep listening to the InputStream until an exception occurs
             while (true) {
                 bytes = mmInputStream.read(buffer);
-
-                // Process the received data
-                // Send the obtained bytes to the UI activity
                 handler.obtainMessage(MESSAGE_READ, bytes, -1, buffer).sendToTarget();
             }
         } catch (IOException e) {
             Log.e(TAG, "Error occurred when reading from InputStream", e);
-            // Notify the UI activity about the connection cancellation
             handler.obtainMessage(MESSAGE_CONNECTION_CANCELED).sendToTarget();
         }
     }
