@@ -29,6 +29,8 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.UUID;
 
+import android.media.MediaPlayer;
+
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MainActivity";
@@ -45,6 +47,8 @@ public class MainActivity extends AppCompatActivity {
     private ListView deviceListView;
     private ArrayList<BluetoothDevice> discoveredDevices;
     private ArrayAdapter<BluetoothDevice> deviceAdapter;
+
+    private MediaPlayer mediaPlayer;
 
     private final Handler handler = new Handler(msg -> {
         switch (msg.what) {
@@ -93,6 +97,8 @@ public class MainActivity extends AppCompatActivity {
         deviceAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, discoveredDevices);
         deviceListView.setAdapter(deviceAdapter);
 
+        mediaPlayer = MediaPlayer.create(this, R.raw.tafd); // replace "your_sound_file" with the name of your sound file
+
         deviceListView.setOnItemClickListener((parent, view, position, id) -> {
             BluetoothDevice selectedDevice = deviceAdapter.getItem(position);
             if (selectedDevice != null) {
@@ -100,6 +106,16 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 Log.e(TAG, "No device selected");
                 showToast("No device selected");
+            }
+        });
+
+        Button playSoundButton = findViewById(R.id.play_sound_button); // replace "play_sound_button" with the id of your button
+        playSoundButton.setOnClickListener(view -> {
+            if (connectivity != null) {
+                mediaPlayer.start();
+            } else {
+                Log.e(TAG, "Devices are not connected");
+                showToast("Devices are not connected");
             }
         });
 
@@ -233,6 +249,7 @@ public class MainActivity extends AppCompatActivity {
     private BluetoothDevice getSelectedDevice() {
         int selectedPosition = deviceAdapter.getPosition(bluetoothDevice);
         if (selectedPosition != ListView.INVALID_POSITION) {
+            tv1.setText("Device Selected!");
             return discoveredDevices.get(selectedPosition);
         }
         return null;

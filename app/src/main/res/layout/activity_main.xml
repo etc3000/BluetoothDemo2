@@ -27,7 +27,9 @@
         android:id="@+id/tv1"
         android:layout_width="match_parent"
         android:layout_height="50dp"
-        android:text=""
+        android:text="Should show selected device here"
+        android:textColor="@color/white"
+        android:background="@color/design_default_color_primary"
         android:layout_below="@id/device_list_view"
         android:layout_centerHorizontal="true"
         android:layout_marginTop="20dp"/>
@@ -55,8 +57,19 @@
         android:id="@+id/received_data_text"
         android:layout_width="match_parent"
         android:layout_height="50dp"
-        android:text=""
+        android:text="Should show received data from other device here"
+        android:textColor="@color/white"
+        android:background="@color/design_default_color_primary"
         android:layout_below="@id/write_button"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="20dp"/>
+
+    <Button
+        android:id="@+id/play_sound_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Play Sound (Earbud Demo)"
+        android:layout_below="@id/received_data_text"
         android:layout_centerHorizontal="true"
         android:layout_marginTop="20dp"/>
 
@@ -65,7 +78,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Cancel"
-        android:layout_below="@id/received_data_text"
+        android:layout_below="@id/play_sound_button"
         android:layout_centerHorizontal="true"
         android:layout_marginTop="20dp"/>
 </RelativeLayout>
