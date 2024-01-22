@@ -83,7 +83,7 @@ public class MainActivity extends AppCompatActivity {
         requestPermissions();
 
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        myUUID = generateRandomUUID();
+        myUUID = getSerialPortProfileUUID();
 
         tv1 = findViewById(R.id.tv1);
         deviceListView = findViewById(R.id.device_list_view);
@@ -133,8 +133,8 @@ public class MainActivity extends AppCompatActivity {
         cancelButton.setOnClickListener(view -> cancelConnection());
     }
 
-    private UUID generateRandomUUID() {
-        return UUID.randomUUID();
+    private UUID getSerialPortProfileUUID() {
+        return UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
     }
 
     private void requestPermissions() {
