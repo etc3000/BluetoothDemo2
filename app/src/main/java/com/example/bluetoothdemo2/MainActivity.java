@@ -10,6 +10,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.location.LocationManager;
+import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Handler;
 import android.provider.Settings;
@@ -24,32 +25,38 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
-import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.UUID;
 
-import android.media.MediaPlayer;
-
+/**
+ * MainActivity class that extends AppCompatActivity.
+ * This class is responsible for managing the Bluetooth connection and user interface.
+ */
 public class MainActivity extends AppCompatActivity {
 
+    // Constants for request codes
     private static final String TAG = "MainActivity";
     private static final int REQUEST_ENABLE_BT = 1;
     private static final int REQUEST_LOCATION_PERMISSION = 2;
 
+    // Bluetooth related variables
     private BluetoothAdapter bluetoothAdapter;
     private BluetoothDevice bluetoothDevice;
     private Connectivity connectivity;
     private UUID myUUID;
 
+    // UI elements
     private TextView receivedDataText;
     private TextView tv1;
     private ListView deviceListView;
     private ArrayList<BluetoothDevice> discoveredDevices;
     private ArrayAdapter<BluetoothDevice> deviceAdapter;
 
+    // Media player for playing sound
     private MediaPlayer mediaPlayer;
 
+    // Handler for managing messages from the Connectivity class
     private final Handler handler = new Handler(msg -> {
         switch (msg.what) {
             case Connectivity.MESSAGE_READ:
@@ -64,6 +71,7 @@ public class MainActivity extends AppCompatActivity {
         return true;
     });
 
+    // BroadcastReceiver for managing discovered devices
     private final BroadcastReceiver discoveryReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -78,27 +86,36 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-
+    /**
+     * Called when the activity is starting.
+     * This is where most initialization should go.
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // Request necessary permissions
         requestPermissions();
 
+        // Initialize Bluetooth adapter and UUID
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         myUUID = getSerialPortProfileUUID();
 
+        // Initialize UI elements
         tv1 = findViewById(R.id.tv1);
         deviceListView = findViewById(R.id.device_list_view);
         receivedDataText = findViewById(R.id.received_data_text);
 
+        // Initialize discovered devices list and adapter
         discoveredDevices = new ArrayList<>();
         deviceAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, discoveredDevices);
         deviceListView.setAdapter(deviceAdapter);
 
-        mediaPlayer = MediaPlayer.create(this, R.raw.tafd); // replace "your_sound_file" with the name of your sound file
+        // Initialize media player
+        mediaPlayer = MediaPlayer.create(this, R.raw.tafd);
 
+        // Set on item click listener for device list view
         deviceListView.setOnItemClickListener((parent, view, position, id) -> {
             BluetoothDevice selectedDevice = deviceAdapter.getItem(position);
             if (selectedDevice != null) {
@@ -109,7 +126,8 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        Button playSoundButton = findViewById(R.id.play_sound_button); // replace "play_sound_button" with the id of your button
+        // Initialize and set on click listener for play sound button
+        Button playSoundButton = findViewById(R.id.play_sound_button);
         playSoundButton.setOnClickListener(view -> {
             if (connectivity != null) {
                 mediaPlayer.start();
@@ -119,9 +137,11 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        // Initialize and set on click listener for discover button
         Button discoverButton = findViewById(R.id.discover_button);
         discoverButton.setOnClickListener(view -> discoverDevices());
 
+        // Initialize and set on click listener for connect button
         Button connectButton = findViewById(R.id.connect_button);
         connectButton.setOnClickListener(view -> {
             BluetoothDevice selectedDevice = getSelectedDevice();
@@ -133,6 +153,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        // Initialize and set on click listener for write button
         Button writeButton = findViewById(R.id.write_button);
         writeButton.setOnClickListener(view -> {
             if (connectivity != null) {
@@ -145,14 +166,21 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        // Initialize and set on click listener for cancel button
         Button cancelButton = findViewById(R.id.cancel_button);
         cancelButton.setOnClickListener(view -> cancelConnection());
     }
 
+    /**
+     * Returns the UUID for the Serial Port Profile (SPP).
+     */
     private UUID getSerialPortProfileUUID() {
         return UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
     }
 
+    /**
+     * Requests necessary permissions for the app.
+     */
     private void requestPermissions() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH) != PackageManager.PERMISSION_GRANTED ||
                 ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_ADMIN) != PackageManager.PERMISSION_GRANTED ||
@@ -172,12 +200,18 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Requests Bluetooth permissions.
+     */
     private void requestBluetoothPermissions() {
         ActivityCompat.requestPermissions(this,
                 new String[]{Manifest.permission.BLUETOOTH, Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.BLUETOOTH_SCAN},
                 REQUEST_LOCATION_PERMISSION);
     }
 
+    /**
+     * Callback for the result from requesting permissions.
+     */
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -192,11 +226,17 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Shows a toast message and logs it.
+     */
     private void showToast(String message) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
         Log.d(TAG, message);
     }
 
+    /**
+     * Starts the device discovery process.
+     */
     private void discoverDevices() {
         LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
@@ -211,6 +251,9 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Starts the Bluetooth discovery process.
+     */
     private void startDiscovery() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH) != PackageManager.PERMISSION_GRANTED ||
                 ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED ||
@@ -246,6 +289,9 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Returns the selected device from the list view.
+     */
     private BluetoothDevice getSelectedDevice() {
         int selectedPosition = deviceAdapter.getPosition(bluetoothDevice);
         if (selectedPosition != ListView.INVALID_POSITION) {
@@ -255,8 +301,11 @@ public class MainActivity extends AppCompatActivity {
         return null;
     }
 
+    /**
+     * Connects to the selected Bluetooth device.
+     */
     private void connectToDevice(BluetoothDevice device) {
-        cancelConnection();
+        //cancelConnection();
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this,
@@ -264,7 +313,15 @@ public class MainActivity extends AppCompatActivity {
                     REQUEST_ENABLE_BT);
             return;
         }
-
+        if (device.getBondState() != BluetoothDevice.BOND_BONDED) {
+            try {
+                Method method = device.getClass().getMethod("createBond", (Class[]) null);
+                method.invoke(device, (Object[]) null);
+            } catch (Exception e) {
+                Log.e(TAG, "Error creating bond", e);
+                showToast("Error creating bond");
+            }
+        } else {
         try {
             BluetoothSocket socket = device.createRfcommSocketToServiceRecord(myUUID);
             socket.connect();
@@ -279,8 +336,12 @@ public class MainActivity extends AppCompatActivity {
             showToast("Error connecting to Bluetooth Device");
             cancelConnection();
         }
+        }
     }
 
+    /**
+     * Cancels the current connection.
+     */
     private void cancelConnection() {
         if (connectivity != null) {
             connectivity.cancel();
@@ -288,6 +349,10 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Called when the activity is destroyed.
+     * Unregisters the discovery receiver.
+     */
     @Override
     protected void onDestroy() {
         super.onDestroy();
